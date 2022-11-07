@@ -31,9 +31,25 @@ boolean match = false;
 Logger logger = Logger.getLogger("Kucoin");  
 FileHandler fh;  
 
-double percent = 0.30;
+double percent = 0.10;
+
+Object[] obj;
 
 ArrayList<String> list = new ArrayList<String>();
+
+ArrayList<Object> array;
+
+	JSONObject jo;
+	JSONArray ticker;
+	JSONObject ArrayObj;
+	double pluspercent;
+	double first;
+
+public Kucoin()
+{
+	array = new ArrayList<Object>();
+	obj = new Object[7];
+}
 
 	public JSONObject geturl(String uri) throws Exception
 	{
@@ -77,45 +93,20 @@ ArrayList<String> list = new ArrayList<String>();
     		System.out.println(response.body());
    		return root;
 	}
-	
-	public JSONObject sendtelegram() throws Exception
-	{
-    		HttpClient client = HttpClient.newHttpClient();
-    		HttpRequest request = HttpRequest.newBuilder()
-          	.uri(URI.create("https://api.telegram.org/18564644:e7dcbf8365a616ffc9d9eeb11f47bdbf/sendMessage?chat_id=-1714455732&text=hi"))
-		.header("Accept", "application/json")
-		.build();
 
-    		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    		JSONObject root = new JSONObject(response.body());
-   		return root;
-	}
-	
-	public JSONObject recvtelegram() throws Exception
-	{
-    		HttpClient client = HttpClient.newHttpClient();
-    		HttpRequest request = HttpRequest.newBuilder()
-          	.uri(URI.create("https://api.telegram.org/18564644:e7dcbf8365a616ffc9d9eeb11f47bdbf/getUpdates"))
-		.header("Accept", "application/json")
-		.build();
-
-    		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    		JSONObject root = new JSONObject(response.body());
-   		return root;
-	}
-
-	public void run(JSONObject root) throws Exception
+	public ArrayList<Object> run(JSONObject root) throws Exception
 	{       
-		JSONObject jo = root.getJSONObject("data");
-		JSONArray ticker = jo.getJSONArray("ticker");
+		jo = root.getJSONObject("data");
+		ticker = jo.getJSONArray("ticker");
 
 		for(int i=0;i<sym.length;i++)
 		{
-			JSONObject ArrayObj = ticker.getJSONObject(i);
+			ArrayObj = ticker.getJSONObject(i);
+
 			if(ArrayObj.getString("symbol").toString().equals(sym[i])&&sym[i].contains("USDT")&&root!=null)
 			{
-				double first = fp[i];
-				double pluspercent = first+(percent*first);
+				first = fp[i];
+				pluspercent = first+(percent*first);
 
 				if(Double.valueOf(ArrayObj.getString("buy")) > pluspercent)
 				{
@@ -137,7 +128,8 @@ ArrayList<String> list = new ArrayList<String>();
 						}
 						
 						match = false;
-						
+
+						/*
 						System.out.println("***************************************************");
 						System.out.println(LocalTime.now());
 						System.out.println(ArrayObj.getString("symbol").toString());
@@ -151,7 +143,17 @@ ArrayList<String> list = new ArrayList<String>();
 						System.out.println(Double.valueOf(ArrayObj.getString("buy")) - fp[i]);
 						System.out.print("percent :");
 						System.out.println(((((Double.valueOf(ArrayObj.getString("buy")))-fp[i])/fp[i])*100)+"%");
-						/*
+						*/
+
+						obj[0] = LocalTime.now();
+						obj[1] = ArrayObj.getString("symbol").toString();
+						obj[2] = fp[i];
+						obj[3] = pluspercent;
+						obj[4] = ArrayObj.getString("buy").toString();
+						obj[5] = Double.valueOf(ArrayObj.getString("buy")) - fp[i];
+						obj[6] = ((((Double.valueOf(ArrayObj.getString("buy")))-fp[i])/fp[i])*100)+"%";
+						array.add(obj);
+/*
 						logger.info("***************************************************");
 						logger.info(ArrayObj.getString("symbol").toString());
 						logger.info("first price: ");
@@ -176,61 +178,21 @@ ArrayList<String> list = new ArrayList<String>();
 				}
 			}
 		}
+		return array;
 	}
 	
 	public void runonce(JSONObject root) throws Exception
 	{       
-		JSONObject jo = root.getJSONObject("data");
-		JSONArray ticker = jo.getJSONArray("ticker");
+		jo = root.getJSONObject("data");
+		ticker = jo.getJSONArray("ticker");
+		System.out.println(ticker.length());
 		sym = new String[ticker.length()];
                 fp = new double[ticker.length()];
 		for(int i=0;i<ticker.length();i++)
 		{
-			JSONObject ArrayObj = ticker.getJSONObject(i);
+			ArrayObj = ticker.getJSONObject(i);
 			sym[i] = ArrayObj.getString("symbol").toString();
 			fp[i] = Double.valueOf(ArrayObj.getString("buy"));
-		}
-	}
-
-	public static void main(String[] args)
-	{
-		try
-		{
-			Kucoin ku = new Kucoin();
-			//ku.login("https://api.kucoin.com/api/v1/accounts/617da39ff17a750001694f33");
-			//fh = new FileHandler("~/kucoin.log");
-			//logger.addHandler(fh);
-        		//SimpleFormatter formatter = new SimpleFormatter();  
-        		//fh.setFormatter(formatter);  
-
-        		//logger.info("My first log"); 
-			ku.runonce(ku.geturl("https://api.kucoin.com/api/v1/market/allTickers"));
-			//ku.sendtelegram();
-			while(true)
-			{
-				ku.run(ku.geturl("https://api.kucoin.com/api/v1/market/allTickers"));
-			}
-		}
-		catch(Exception e)
-		{
-			try
-			{
-				System.out.println(LocalTime.now());
-				System.out.println(e);
-				//logger.info(e);
-				Kucoin ku = new Kucoin();
-				ku.runonce(ku.geturl("https://api.kucoin.com/api/v1/market/allTickers"));
-
-				while(true)
-				{
-					ku.run(ku.geturl("https://api.kucoin.com/api/v1/market/allTickers"));
-				}
-			}
-			catch(Exception ex)
-			{
-				System.out.println(LocalTime.now());
-				System.out.println(ex);
-			}
 		}
 	}
 }
