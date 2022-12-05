@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="Kucoin:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Kucoin_jar</output-path>
+    <root id="archive" name="Kucoin.jar">
+      <element id="module-output" name="Kucoin" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/src/json-20220924.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
