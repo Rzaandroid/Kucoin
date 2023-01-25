@@ -1,75 +1,91 @@
 import java.net.http.*;
 import java.net.URI;
-
 import org.json.*;
-import org.json.JSONTokener;
-
-import java.awt.Desktop;
-
 import java.util.ArrayList;
 import java.util.logging.*;
-
 import java.time.LocalTime;
-
 import java.util.Base64;
-
 
 public class Kucoin
 {
-String [] sym;
-double [] fp;
-String[] split;
-Float[] r;
-Float price = 0.0f;
-Float rise = 0.0f;
-Float low = 0.0f;
-Float firstprice = 0.0f;
-String symbol = "";
+ArrayList<String> sym;
+ArrayList<Double> fp;
+ArrayList<Integer> can;
 String lastsym = "";
 boolean match = false;
-
-Logger logger = Logger.getLogger("Kucoin");  
-FileHandler fh;  
-
-double percent = 0.10;
-
+double percent = 0.30;
 Object[] obj;
-
 ArrayList<String> list = new ArrayList<String>();
-
 ArrayList<Object> array;
+JSONObject jo;
+JSONArray ticker;
+JSONObject ArrayObj;
+double pluspercent;
+double first;
+HttpClient client;
+HttpRequest request;
+HttpResponse<String> response;
+JSONObject root;
+JSONObject candles;
+Process process;
+	String lastbody;
 
-	JSONObject jo;
-	JSONArray ticker;
-	JSONObject ArrayObj;
-	double pluspercent;
-	double first;
+	int symmatch;
 
-public Kucoin()
-{
-	array = new ArrayList<Object>();
-	obj = new Object[7];
-}
+	int startTimeinsec;
 
-	public JSONObject geturl(String uri) throws Exception
+	public Kucoin()
 	{
-    		HttpClient client = HttpClient.newHttpClient();
-    		HttpRequest request = HttpRequest.newBuilder()
-          	.uri(URI.create(uri))
-		.header("Accept", "application/json")
-		.build();
+		symmatch=0;
+		lastbody = "";
+		array = new ArrayList<Object>();
+		can = new ArrayList<Integer>();
+		obj = new Object[7];
+		startTimeinsec = getTimeinsec();
+		sym = new ArrayList<String>();
+		fp = new ArrayList<Double>();
+		can = new ArrayList<Integer>();
+	}
 
-    		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    		JSONObject root = null;
-    		if(response.body().contains("{"))
-    		{
-    			root = new JSONObject(response.body());
-    		}
-   		return root;
+	public JSONObject geturl(String uri)
+	{
+		try {
+			client = HttpClient.newHttpClient();
+			request = HttpRequest.newBuilder().uri(URI.create(uri)).header("Accept", "application/json").build();
+			response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			root = null;
+			if (response.body().contains("{")) {
+				root = new JSONObject(response.body());
+			}
+			else
+			{
+				System.out.println("error {");
+			}
+			//System.out.println(response.body().length());
+		}
+		catch(Exception e)
+		{
+			System.out.println(LocalTime.now());
+			System.out.println(e);
+		}
+
+			//print to printer lists of arrays to see error instead of 1260 so can do all
+//aaaaaaaaaaa aaaaaaaaa aaaaaaaaaaaaa aaaaaaaaaaa aaaaaaaaaaa aaaaaaaaaa
+//check which column has a difference
+//printnumber in array at the top then data
+//even save to txt files and use diff
+//even print diff between 2 strings
+
+			//number of chars dont match check tickers incase they all have price symbol at bottom
+
+			//sym[] should be arraylist if symbol isnt in there add it
+	return root;
 	}
 	
-	public JSONObject login(String uri) throws Exception
+	public JSONObject login(String uri)
 	{
+		try
+		{
         final String api_key = "617da39ff17a750001694f33";
         final String api_secret = "be2d0acd-a0c3-4c76-b580-4853ea9a3b03";
         final String timestamp = String.valueOf(System.currentTimeMillis());
@@ -91,111 +107,177 @@ public Kucoin()
     		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
     		JSONObject root = new JSONObject(response.body());
     		System.out.println(response.body());
+		}
+		catch(Exception e)
+		{
+			System.out.println(LocalTime.now());
+			System.out.println(e);
+		}
    		return root;
 	}
 
-	public ArrayList<Object> run(JSONObject root) throws Exception
-	{       
+	public ArrayList<Object> run(JSONObject root)
+	{
+		try
+		{
 		jo = root.getJSONObject("data");
 		ticker = jo.getJSONArray("ticker");
+		array.clear(); //clear which array
+		//System.out.println(ticker.length());
 
-		for(int i=0;i<sym.length;i++)
+		for(int i=0;i<ticker.length();i++)//change this to arrayobj and go through sym[] if its not in there then adds it and to fp[]
 		{
+			//need another for loop to go throught ticker or ^
 			ArrayObj = ticker.getJSONObject(i);
 
-			if(ArrayObj.getString("symbol").toString().equals(sym[i])&&sym[i].contains("USDT")&&root!=null)
+			for(int j=0;j<sym.size();j++)
 			{
-				first = fp[i];
+				if(ArrayObj.getString("symbol").toString().equals(sym.get(j)))
+				{
+					symmatch++;
+				}
+				else
+				{
+					if(symmatch==0)
+					{
+						//add it to array and fp[] make arraylist
+						sym.add(ArrayObj.getString("symbol").toString());
+						fp.add(Double.valueOf(ArrayObj.getString("buy").toString()));
+						can.add(0);
+
+						//System.out.println(ArrayObj.getString("symbol").toString());
+						//System.out.println(ArrayObj.getString("buy").toString());
+
+			//massive error prints the same symbol
+
+						if(!(sym.size()==fp.size()))
+						{
+							System.out.println(sym.size() + "  " + fp.size());
+						}
+					}
+				}
+			}
+			symmatch=0;
+
+			//if(ArrayObj.getString("symbol").toString().equals(sym.get(i))&&sym.get(i).contains("USDT")&&root!=null)
+			if(ArrayObj.getString("symbol").toString().equals(sym.get(i))&&root!=null)
+			{
+				//if = get it because it exists therefore it might be >
+				//if doesnt equal add it at bottom
+				first = fp.get(i);
 				pluspercent = first+(percent*first);
 
 				if(Double.valueOf(ArrayObj.getString("buy")) > pluspercent)
 				{
-					if(!lastsym.equals(sym[i]))
-					{
-						for(int j=0;j<list.size();j++)
-						{
-							if(list.get(j).equals(sym[i]))
-							{
+					//if above percent printout
+					//if last sym != what if = print if above 30percent
+					if(!lastsym.equals(sym.get(i))) {
+						for (int j = 0; j < list.size(); j++) {
+							//if = in wrong pllace first if !=
+							if (list.get(j).equals(sym.get(i))) {
 								match = true;
+								//process = Runtime.getRuntime().exec("espeak \"Rising\"");
+							} else {
+								//System.out.println("not equals");
 							}
 						}
-						list.add(sym[i]);
-						
-						if(match == false)
-						{
-							//Kucoin_Thread t = new Kucoin_Thread(sym[i], percent);
-							//t.start();
-						}
-						
-						match = false;
+						list.add(sym.get(i));
 
-						/*
-						System.out.println("***************************************************");
-						System.out.println(LocalTime.now());
-						System.out.println(ArrayObj.getString("symbol").toString());
-						System.out.print("first price: ");
-						System.out.println(fp[i]);
-						System.out.print("fp + percentage: ");
-						System.out.println(pluspercent);
-						System.out.print("price: ");
-						System.out.println(ArrayObj.getString("buy").toString());
-						System.out.print("difference :");
-						System.out.println(Double.valueOf(ArrayObj.getString("buy")) - fp[i]);
-						System.out.print("percent :");
-						System.out.println(((((Double.valueOf(ArrayObj.getString("buy")))-fp[i])/fp[i])*100)+"%");
-						*/
+						if (match == false) {
+							process = Runtime.getRuntime().exec("espeak " + sym.get(i) + "");
+						}
+						match = false;
 
 						obj[0] = LocalTime.now();
 						obj[1] = ArrayObj.getString("symbol").toString();
-						obj[2] = fp[i];
+						obj[2] = fp.get(i);
 						obj[3] = pluspercent;
 						obj[4] = ArrayObj.getString("buy").toString();
-						obj[5] = Double.valueOf(ArrayObj.getString("buy")) - fp[i];
-						obj[6] = ((((Double.valueOf(ArrayObj.getString("buy")))-fp[i])/fp[i])*100)+"%";
-						array.add(obj);
-/*
-						logger.info("***************************************************");
-						logger.info(ArrayObj.getString("symbol").toString());
-						logger.info("first price: ");
-						logger.info(fp[i]);
-						logger.info("fp + percentage: ");
-						logger.info(pluspercent);
-						logger.info("price: ");
-						logger.info(ArrayObj.getString("buy").toString());
-						logger.info("difference :");
-						logger.info(Double.valueOf(ArrayObj.getString("buy")) - fp[i]);
-						logger.info("percent :");
-						logger.info(((((Double.valueOf(ArrayObj.getString("buy")))-fp[i])/fp[i])*100)+"%");
-						*/
-						//Desktop d = Desktop.getDesktop();
-						//d.browse(URI.create("https://www.kucoin.com/trade/"+sym[i]));
+						obj[5] = Double.valueOf(ArrayObj.getString("buy")) - fp.get(i);
+						obj[6] = (Double) ((((Double.valueOf(ArrayObj.getString("buy"))) - fp.get(i)) / fp.get(i)) * 100);
+
+						candles = geturl("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol=" + obj[1] + "&startAt=0&endAt="+startTimeinsec+"");
+						JSONArray jo2 = candles.getJSONArray("data");
+						for(int e=0;e<jo2.length();e++) {
+							JSONArray ticker2 = jo2.getJSONArray(e);
+							can.set(i,0);
+							for (int d = 0; d < ticker2.length(); d++) {
+								System.out.println("kl " + ticker2.getString(d));
+							}
+							if ((ticker2.getDouble(2) - ticker2.optDouble(1) > 0)) {
+								can.set(i, can.get(i) + 1);
+							}
+
+							if ((ticker2.getDouble(2) - ticker2.optDouble(1) < 0)) {
+								can.set(i, can.get(i) - 1);
+							}
+
+							System.out.println("GREEN " + can.get(i));
+
+
+							for (int y = 0; y < obj.length; y++) {
+								System.out.println(obj[y]);
+							}
+							System.out.println("*****************************************");
+						}
 					}
-					lastsym=sym[i];
+					else {
+						System.out.println("equals");
+					}
+						lastsym = sym.get(i);
 				}
-				else if(Double.valueOf(ArrayObj.getString("buy")) < fp[i])
+				else if(Double.valueOf(ArrayObj.getString("buy")) < fp.get(i))
 				{
-					fp[i] = Double.valueOf(ArrayObj.getString("buy"));
+					fp.set(i, Double.valueOf(ArrayObj.getString("buy")));
 				}
 			}
 		}
+		}
+		catch(Exception e)
+		{
+			System.out.println(LocalTime.now());
+			System.out.println(e);
+		}
 		return array;
 	}
+
+	public int getTimeinsec()
+	{
+		candles = geturl("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol=BTC-USDT&startAt=0&endAt=0");
+		JSONArray jo2 = candles.getJSONArray("data");
+		JSONArray ticker2 = jo2.getJSONArray(0);
+
+		return ticker2.getInt(0);
+	}
 	
-	public void runonce(JSONObject root) throws Exception
-	{       
+	public void runonce(JSONObject root)
+	{
+		try
+		{
 		jo = root.getJSONObject("data");
 		ticker = jo.getJSONArray("ticker");
-		System.out.println(ticker.length());
-		sym = new String[ticker.length()];
-                fp = new double[ticker.length()];
+
 		for(int i=0;i<ticker.length();i++)
 		{
 			ArrayObj = ticker.getJSONObject(i);
-			sym[i] = ArrayObj.getString("symbol").toString();
-			fp[i] = Double.valueOf(ArrayObj.getString("buy"));
+			sym.add(ArrayObj.getString("symbol").toString());
+			can.add(0);
+			if(ArrayObj.getString("buy")!=null) {
+				fp.add(Double.valueOf(ArrayObj.getString("buy")));
+			}
+		}
+		}
+		catch(Exception e)
+		{
+			System.out.println(LocalTime.now());
+			System.out.println(e);
 		}
 	}
 }
+
+
+
+
 
 /*
 daily risers weekly <>24hr
@@ -226,4 +308,8 @@ percent :78.781512605042%
 org.json.JSONException: A JSONObject text must begin with '{' at 1 [character 2 line 1]
 https://www.kucoin.com/trade/PLD-USDT?spm=kcWeb.B5tradeAccount.Header4.1
 */
+
+
+
+//multithreaded server concurrent threads loop through give a small amount of time to each then call stop then start
 
